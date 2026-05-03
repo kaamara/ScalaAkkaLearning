@@ -19,6 +19,11 @@ jobs:
           distribution: temurin
           java-version: 11
 
+      - name: Install SBT
+        run: |
+          curl -fL https://github.com/sbt/sbt/releases/download/v1.9.7/sbt-1.9.7.tgz | tar xz
+          echo "$PWD/sbt/bin" >> $GITHUB_PATH
+
       - name: Cache SBT
         uses: actions/cache@v3
         with:

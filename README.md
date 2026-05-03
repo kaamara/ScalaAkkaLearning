@@ -1,3 +1,4 @@
+![CI](https://github.com/kaamara/ScalaAkkaProjects/actions/workflows/ci.yml/badge.svg)
 # Kalkulator Akka
 nauki Akka w Scali.
 

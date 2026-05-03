@@ -3,6 +3,8 @@
 nauki Akka w Scali.
 
 ## Opis
+
+## 01 Kalkulator 
 Interaktywny kalkulator działający na aktorach Akka.
 Obsługuje dodawanie, odejmowanie, mnożenie i dzielenie.
 

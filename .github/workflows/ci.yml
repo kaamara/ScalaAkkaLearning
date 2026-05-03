@@ -37,3 +37,19 @@ jobs:
 
       - name: Test
         run: cd 01-kalkulator && sbt test
+
+      - name: Build JAR
+        run: cd 01-kalkulator && sbt assembly
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./01-kalkulator
+          push: true
+          tags: kaamara/scala-akka-kalkulator:latest

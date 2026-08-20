@@ -24,6 +24,10 @@ lazy val root = (project in file("."))
     ),
     scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked"),
 
+    // Bez tego "sbt run" konczy sie zaraz po powrocie z main i serwer ginie razem
+    // z JVM sbt. Forkowany proces zyje az do Ctrl+C - tak samo jak w IntelliJ.
+    Compile / run / fork := true,
+
     // fat JAR: docelowa nazwa artefaktu kopiowanego w Dockerfile
     assembly / assemblyJarName := "app.jar",
     assembly / mainClass       := Some("pl.kaamara.httpapi.Main"),

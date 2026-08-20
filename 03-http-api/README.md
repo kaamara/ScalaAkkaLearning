@@ -1,78 +1,76 @@
 # 03-http-api
 
 Akka HTTP + typed actors. Stanowy licznik wystawiony przez REST, z endpointami
-operacyjnymi gotowymi pod Kubernetes i Prometheusa.
-
-Projekt zamyka serie Akka: zastepuje planowane Ping-Pong, Echo Server i czat
-miedzy aktorami — komunikacja, obsluga HTTP i wspoldzielony stan sa tutaj
-w jednym miejscu, w formie, ktora da sie wdrozyc.
+operacyjnymi gotowymi pod Kubernetesa i Prometheusa.
 
 ## Endpointy
 
-| Metoda | Sciezka             | Opis                                      |
-|--------|---------------------|-------------------------------------------|
-| GET    | `/health`           | liveness — proces zyje                    |
-| GET    | `/ready`            | readiness — przyjmuje ruch (503 przy shutdown) |
-| GET    | `/counter`          | aktualna wartosc                          |
-| POST   | `/counter/increment`| +1                                        |
-| POST   | `/counter/decrement`| -1                                        |
-| POST   | `/counter/reset`    | zerowanie                                 |
-| GET    | `/metrics`          | metryki w formacie Prometheusa            |
+| Metoda | Ścieżka              | Opis                                       |
+|--------|----------------------|--------------------------------------------|
+| GET    | `/health`            | liveness — proces żyje                     |
+| GET    | `/ready`             | readiness — przyjmuje ruch (503 przy shutdownie) |
+| GET    | `/counter`           | aktualna wartość                           |
+| POST   | `/counter/increment` | +1                                         |
+| POST   | `/counter/decrement` | -1                                         |
+| POST   | `/counter/reset`     | zerowanie                                  |
+| GET    | `/metrics`           | metryki w formacie Prometheusa             |
 
 ## Uruchomienie
 
 ```bash
-# lokalnie
-sbt run
-
-# testy
-sbt test
-
-# kontener
-docker compose up --build
-curl -s localhost:8080/health
-curl -s -X POST localhost:8080/counter/increment
-curl -s localhost:8080/metrics
+sbt run     # serwer żyje do Ctrl+C
+sbt test    # 16 testów
 ```
+
+W kontenerze:
+
+```bash
+docker compose up -d --build
+docker compose ps                      # czekaj na "(healthy)" — JVM wstaje kilka sekund
+curl -s localhost:8080/health
+docker compose down
+```
+
+Endpointy można też przeklikać z pliku [`requests.http`](requests.http)
+(IntelliJ, plugin restClient) zamiast wpisywać curle.
+
+## Prometheus
+
+```bash
+docker compose --profile observability up -d
+```
+
+Prometheus na `http://localhost:9090`, scrapuje `/metrics` co 15 sekund.
+Przykładowe zapytanie: `sum by (status) (http_requests_total)`. Bez tego
+profilu startuje sama aplikacja.
 
 ## Decyzje projektowe
 
-**`/health` i `/ready` to dwa rozne endpointy.** W Kubernetesie mapuja sie na
-`livenessProbe` i `readinessProbe`. Porazka liveness restartuje poda, porazka
-readiness tylko wyjmuje go z Service. Podpiecie obu prob pod jeden endpoint
-powoduje, ze przeciazona aplikacja wpada w petle restartow zamiast po prostu
-przestac dostawac ruch.
+**`/health` i `/ready` to dwa różne endpointy.** Mapują się na `livenessProbe`
+i `readinessProbe`. Porażka liveness restartuje poda, porażka readiness tylko
+wyjmuje go z Service. Podpięcie obu prób pod jeden endpoint sprawia, że
+przeciążona aplikacja wpada w pętlę restartów zamiast po prostu przestać
+dostawać ruch.
 
 **Graceful shutdown przed unbindem.** Po SIGTERM aplikacja najpierw zwraca 503
-na `/ready` i odczekuje 3 sekundy, zanim zamknie polaczenia. Bez tego okna load
-balancer przez chwile kieruje ruch do zamykajacego sie procesu i czesc zadan
-dostaje blad.
+na `/ready` i czeka 3 sekundy, zanim zamknie połączenia. Bez tego okna load
+balancer przez chwilę kieruje ruch do zamykającego się procesu.
+
+**Stan w parametrze `Behavior`, nie w polu klasy.** Aktor nie ma `var`; kolejny
+stan to nowe zachowanie zwrócone z `Behaviors.receiveMessage`.
 
 **Metryki bez biblioteki klienckiej.** Format tekstowy Prometheusa jest
-generowany recznie, zeby bylo widac jego strukture. W projekcie produkcyjnym
-uzywa sie `micrometer` albo `prometheus-client`.
+generowany ręcznie, żeby było widać jego strukturę. W projekcie produkcyjnym
+używa się `micrometer` albo `prometheus-client`.
 
-**Normalizacja sciezek w metrykach.** `/counter/123` jest zapisywane jako
-`/counter/{id}`. Bez tego kazdy unikalny URL tworzy osobna serie czasowa —
-klasyczny sposob na przewrocenie Prometheusa.
+**Normalizacja ścieżek w metrykach.** `/counter/123` zapisuje się jako
+`/counter/{id}`, a każde 404 jako `/{unmatched}`. Bez tego każdy unikalny URL
+tworzy osobną serię czasową — klasyczny sposób na przewrócenie Prometheusa.
 
-**Stan w parametrze `Behavior`, nie w polu klasy.** Aktor nie ma `var`;
-kolejny stan to nowe zachowanie zwrocone z `Behaviors.receiveMessage`.
-
-**Obraz: multi-stage, non-root, pinowany tag bazowy.** `MaxRAMPercentage`
-zamiast `-Xmx`, zeby JVM respektowala limit pamieci kontenera.
-
-## Rozmiar obrazu
-
-| Wariant                              | Rozmiar |
-|--------------------------------------|---------|
-| single-stage (sbt w obrazie koncowym) | _niezmierzone_ |
-| multi-stage, JRE                      | 421 MB |
-
-Zmierz: `docker images kaamara/scala-akka-http-api --format "{{.Size}}"`
+**Obraz multi-stage, non-root, 421 MB.** Tag bazowy pinowany, a JVM dostaje
+`MaxRAMPercentage` zamiast `-Xmx`, żeby respektowała limit pamięci kontenera.
 
 ## Licencja Akka
 
-Uzyte wersje: Akka 2.6.20, Akka HTTP 10.2.10 — ostatnie na Apache 2.0.
-Nowsze (2.7+) sa na Business Source License. Alternatywa dla nowego kodu:
-Apache Pekko (fork Akka 2.6 rozwijany przez ASF).
+Akka 2.6.20 i Akka HTTP 10.2.10 to ostatnie wersje na Apache 2.0. Nowsze (2.7+)
+są na Business Source License. Alternatywa dla nowego kodu: Apache Pekko.

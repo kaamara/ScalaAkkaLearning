@@ -1,21 +1,22 @@
-# Scala Docker App
+# scala-docker-app
 
-## Opis
-Aplikacja webowa złożona z trzech kontenerów: backendu w Scali (Cask),
-bazy PostgreSQL i statycznego frontendu (nginx). Frontend wysyła
-wiadomości do backendu (`POST /add`), a backend zapisuje je w bazie
-i udostępnia ostatnie wpisy (`GET /messages`).
+Aplikacja webowa z trzech kontenerów: backend w Scali (Cask), baza PostgreSQL
+i statyczny frontend na nginx. Frontend wysyła wiadomości przez `POST /add`,
+backend zapisuje je w bazie i udostępnia ostatnie wpisy przez `GET /messages`.
 
 ## Uruchomienie
-```
-docker-compose up --build
+
+```bash
+docker compose up -d --build
 ```
 
-Frontend: http://localhost:8080
-Backend: http://localhost:8081
+- frontend: http://localhost:8080
+- backend: http://localhost:8081
+
+```bash
+docker compose down
+```
 
 ## Stack
-- Scala 2.13, Cask
-- PostgreSQL 15
-- nginx (frontend)
-- Docker Compose
+
+Scala 2.13 + Cask, PostgreSQL 15, nginx, Docker Compose.

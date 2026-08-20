@@ -1,28 +1,45 @@
-![CI](https://github.com/kaamara/ScalaAkkaProjects/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci.yml/badge.svg)
 
-# ScalaAkkaProjects
+# ScalaAkkaLearning
 
-Nauka Scala i Akka — zbiór małych, niezależnych projektów, każdy w swoim
-podfolderze z własnym `build.sbt` i `Dockerfile`.
+Nauka Scali i Akki — zbiór małych, niezależnych projektów. Każdy ma własny
+`build.sbt`, `Dockerfile` i README, więc otwiera się i uruchamia osobno.
 
 ## Projekty
 
 | Projekt | Opis | Stack |
 |---|---|---|
-| [01-kalkulator](01-kalkulator) | Interaktywny kalkulator działający na aktorach Akka (dodawanie, odejmowanie, mnożenie, dzielenie) | Scala 2.13, Akka 2.6.21 |
-| [02-licznik](02-licznik) | Licznik oparty na aktorze Akka (increment / decrement / reset / odczyt stanu) | Scala 2.13, Akka 2.6.21 |
-| [03-http-api](03-http-api) | REST na Akka HTTP + typed actors: licznik oraz `/health`, `/ready`, `/metrics` w formacie Prometheusa | Scala 2.13, Akka 2.6.20, Akka HTTP 10.2.10, Docker |
-| [scala-docker-app](scala-docker-app) | Aplikacja webowa: backend Cask + PostgreSQL + statyczny frontend, całość odpalana przez `docker-compose` | Scala 2.13, Cask, PostgreSQL, Docker |
+| [01-kalkulator](01-kalkulator) | Kalkulator na aktorach Akka: dodawanie, odejmowanie, mnożenie, dzielenie | Scala 2.13, Akka 2.6.21 |
+| [02-licznik](02-licznik) | Licznik na aktorze Akka: increment, decrement, reset, odczyt | Scala 2.13, Akka 2.6.21 |
+| [03-http-api](03-http-api) | REST na Akka HTTP: licznik plus `/health`, `/ready` i `/metrics` dla Prometheusa | Scala 2.13, Akka HTTP 10.2.10, Docker |
+| [scala-docker-app](scala-docker-app) | Backend Cask + PostgreSQL + frontend nginx, całość na Docker Compose | Scala 2.13, Cask, PostgreSQL, Docker |
 
-Szczegóły uruchomienia każdego projektu znajdują się w README w jego folderze.
+## Uruchomienie
 
-## CI/CD
+W korzeniu repo nie ma `build.sbt` — każdy projekt uruchamia się ze swojego
+folderu:
 
-Workflow w `.github/workflows/ci.yml`:
+```bash
+cd 03-http-api
+sbt run          # albo: docker compose up -d --build
+sbt test
+```
 
-- `build` — kompiluje, testuje i buduje obraz `01-kalkulator`
-  (`kaamara/scala-akka-kalkulator`)
-- `test-http-api` / `build-http-api` — testy i obraz `03-http-api`
+W IntelliJ otwieraj `build.sbt` wybranego podprojektu, nie folder repo.
+Szczegóły w README każdego z nich.
+
+## CI
+
+`.github/workflows/ci.yml`, wyzwalany przy pushu i PR do `main`:
+
+- `build` — testy i obraz `01-kalkulator` (`kaamara/scala-akka-kalkulator`)
+- `test-http-api` → `build-http-api` — testy i obraz `03-http-api`
   (`kaamara/scala-akka-http-api`), tagowany po `github.sha`
 
-`02-licznik` nie ma jeszcze joba w workflow.
+`02-licznik` nie ma jeszcze joba.
+
+## Licencja Akka
+
+Wszędzie używana jest Akka 2.6.x / Akka HTTP 10.2.x — ostatnie wersje na
+Apache 2.0. Nowsze (2.7+) są na Business Source License i wymagają płatnej
+licencji przy komercyjnym użyciu. Alternatywa dla nowego kodu: Apache Pekko.

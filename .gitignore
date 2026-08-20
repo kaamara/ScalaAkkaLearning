@@ -1,0 +1,25 @@
+# --- sbt / Scala ---
+# target/ bez prefiksu lapie kazdy poziom: 01-kalkulator/target,
+# 03-http-api/project/target itd.
+target/
+project/project/
+.bsp/
+.bloop/
+.metals/
+.scala-build/
+
+# --- IDE ---
+.idea/
+*.iml
+.vscode/
+
+# --- JVM ---
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# --- system ---
+.DS_Store
+Thumbs.db
+desktop.ini

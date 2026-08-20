@@ -53,3 +53,59 @@ jobs:
           context: ./01-kalkulator
           push: true
           tags: kaamara/scala-akka-kalkulator:latest
+
+  test-http-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 03-http-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: sbt
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Testy
+        run: sbt test
+
+  build-http-api:
+    # bez needs job budowalby sie rownolegle z testami i nic by nie blokowal
+    needs: test-http-api
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Metadane obrazu
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/scala-akka-http-api
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build i push
+        uses: docker/build-push-action@v6
+        with:
+          context: 03-http-api
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          sbom: true
+          provenance: true

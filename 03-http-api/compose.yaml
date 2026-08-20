@@ -22,3 +22,26 @@ services:
       resources:
         limits:
           memory: 512M
+
+  # Profil "observability" — nie startuje przy zwyklym `docker compose up`.
+  # Wlaczenie: docker compose --profile observability up -d
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    profiles: ["observability"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    # czeka na healthcheck api, zeby pierwszy scrape nie poszedl w pustke
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:

@@ -9,3 +9,4 @@ project/project/
 .github/
 *.md
 compose.yaml
+prometheus.yml

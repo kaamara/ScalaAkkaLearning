@@ -113,7 +113,13 @@ final class Routes(
     }
 
   /** Owija trasy pomiarem czasu i zliczaniem odpowiedzi.
-    * mapResponse widzi finalny status, wiec liczy takze 404 i 500.
+    *
+    * Route.seal jest tu konieczne, a nie kosmetyczne. Nieznana sciezka i zla
+    * metoda to w Akka HTTP *rejections*, nie odpowiedzi — normalnie zamieniaja
+    * sie w HttpResponse dopiero na zewnatrz, przy uszczelnianiu trasy przez
+    * serwer, czyli juz poza mapResponse. Bez seal ruch 4xx nie trafia do
+    * metryk wcale, a to zwykle pierwsza rzecz, ktorej szuka sie przy
+    * debugowaniu klienta walacego w zly endpoint.
     */
   private def instrumented(inner: Route): Route =
     extractRequest { req =>
@@ -126,7 +132,7 @@ final class Routes(
           System.nanoTime() - start
         )
         resp
-      }(inner)
+      }(Route.seal(inner))
     }
 
   val routes: Route = instrumented(concat(healthRoutes, counterRoutes, metricsRoute))

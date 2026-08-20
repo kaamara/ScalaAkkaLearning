@@ -67,9 +67,9 @@ class RoutesSpec extends AnyWordSpec with Matchers with ScalatestRouteTest with 
       }
     }
 
-    "odrzucic metode GET na tej sciezce" in {
+    "zwrocic 405 na metode GET" in {
       Get("/counter/increment") ~> newRoutes().routes ~> check {
-        handled shouldBe false
+        status shouldBe StatusCodes.MethodNotAllowed
       }
     }
   }
@@ -96,6 +96,30 @@ class RoutesSpec extends AnyWordSpec with Matchers with ScalatestRouteTest with 
         body should include("""http_requests_total{method="GET",path="/health",status="200"}""")
         body should include("app_counter_value")
         body should include("jvm_memory_used_bytes")
+      }
+    }
+
+    "policzyc 405 na zlej metodzie" in {
+      val r = newRoutes()
+      Get("/counter/increment") ~> r.routes ~> check {
+        status shouldBe StatusCodes.MethodNotAllowed
+      }
+      Get("/metrics") ~> r.routes ~> check {
+        responseAs[String] should include(
+          """http_requests_total{method="GET",path="/counter/increment",status="405"} 1"""
+        )
+      }
+    }
+
+    "policzyc 404 i zwinac sciezke, zeby nie rozsadzic kardynalnosci" in {
+      val r = newRoutes()
+      Get("/nie-ma-takiego") ~> r.routes ~> check { status shouldBe StatusCodes.NotFound }
+      Get("/tez-nie-ma")     ~> r.routes ~> check { status shouldBe StatusCodes.NotFound }
+      Get("/metrics") ~> r.routes ~> check {
+        val body = responseAs[String]
+        body should include("""http_requests_total{method="GET",path="/{unmatched}",status="404"} 2""")
+        body should not include "nie-ma-takiego"
+        body should not include "tez-nie-ma"
       }
     }
 

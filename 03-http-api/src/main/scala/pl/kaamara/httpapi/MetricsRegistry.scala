@@ -23,16 +23,22 @@ final class MetricsRegistry {
 
   /** Rejestruje jedno obsluzone zadanie HTTP. */
   def record(method: String, path: String, status: Int, durationNanos: Long): Unit = {
-    val key = Key(method, normalize(path), status)
+    val key = Key(method, normalize(path, status), status)
     requests.computeIfAbsent(key, _ => new LongAdder()).increment()
     durations.computeIfAbsent(key, _ => new LongAdder()).add(durationNanos / 1000000L)
   }
 
   /** Ogranicza kardynalnosc etykiet. Bez tego kazda unikalna sciezka
     * (np. /counter/123) tworzy nowa serie czasowa i zabija Prometheusa.
+    *
+    * Przy 404 sciezka jest z definicji dowolna — kazdy skaner portow albo
+    * literowka klienta tworzylaby kolejna serie. Zwijamy ja do jednej
+    * etykiety: interesuje nas ile jest pudel, nie w co konkretnie.
     */
-  private def normalize(path: String): String =
-    if (path.isEmpty) "/" else path.replaceAll("/\\d+", "/{id}")
+  private def normalize(path: String, status: Int): String =
+    if (status == 404) "/{unmatched}"
+    else if (path.isEmpty) "/"
+    else path.replaceAll("/\\d+", "/{id}")
 
   private def escape(s: String): String =
     s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")

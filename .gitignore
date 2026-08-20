@@ -1,8 +1,9 @@
 # --- sbt / Scala ---
 # target/ bez prefiksu lapie kazdy poziom: 01-kalkulator/target,
-# 03-http-api/project/target itd.
+# 03-http-api/project/target itd. Wzorzec ze slashem w SRODKU jest za to
+# zakotwiczony w korzeniu repo — dlatego meta-build sbt wymaga **/.
 target/
-project/project/
+**/project/project/
 .bsp/
 .bloop/
 .metals/

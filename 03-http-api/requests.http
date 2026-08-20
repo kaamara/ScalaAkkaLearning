@@ -1,0 +1,38 @@
+# Endpointy do przeklikania z IntelliJ (plugin restClient).
+# Zielona strzalka przy kazdym zadaniu. Aplikacja musi dzialac:
+#   docker compose up -d
+#
+# Zmienna srodowiskowa: przelaczasz w prawym gornym rogu edytora.
+@host = http://localhost:8080
+
+### zdrowie procesu (livenessProbe) — zawsze 200, dopoki JVM zyje
+GET {{host}}/health
+
+### gotowosc na ruch (readinessProbe) — 503 w trakcie wygaszania
+GET {{host}}/ready
+
+### odczyt licznika
+GET {{host}}/counter
+
+### +1
+POST {{host}}/counter/increment
+
+### -1
+POST {{host}}/counter/decrement
+
+### zerowanie
+POST {{host}}/counter/reset
+
+### 405 — zla metoda na istniejacej sciezce.
+### Ma sie pojawic w /metrics ze status="405" i prawdziwa sciezka.
+GET {{host}}/counter/increment
+
+### 404 — nieznana sciezka. W /metrics ma sie zwinac do path="/{unmatched}",
+### zeby skanery portow nie tworzyly nowej serii czasowej na kazde pudlo.
+GET {{host}}/nie-ma-takiego
+
+### 404 numer dwa — sprawdz, ze NIE tworzy osobnej serii
+GET {{host}}/tez-nie-ma
+
+### metryki w formacie Prometheusa
+GET {{host}}/metrics

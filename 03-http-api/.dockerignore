@@ -10,3 +10,4 @@ project/project/
 *.md
 compose.yaml
 prometheus.yml
+requests.http

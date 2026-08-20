@@ -70,7 +70,4 @@ tworzy osobną serię czasową — klasyczny sposób na przewrócenie Prometheus
 **Obraz multi-stage, non-root, 421 MB.** Tag bazowy pinowany, a JVM dostaje
 `MaxRAMPercentage` zamiast `-Xmx`, żeby respektowała limit pamięci kontenera.
 
-## Licencja Akka
 
-Akka 2.6.20 i Akka HTTP 10.2.10 to ostatnie wersje na Apache 2.0. Nowsze (2.7+)
-są na Business Source License. Alternatywa dla nowego kodu: Apache Pekko.

@@ -1,0 +1,11 @@
+target/
+project/target/
+project/project/
+.bsp/
+.idea/
+.metals/
+.bloop/
+.git/
+.github/
+*.md
+compose.yaml

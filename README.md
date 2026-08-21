@@ -37,9 +37,3 @@ Szczegóły w README każdego z nich.
   (`kaamara/scala-akka-http-api`), tagowany po `github.sha`
 
 `02-licznik` nie ma jeszcze joba.
-
-## Licencja Akka
-
-Wszędzie używana jest Akka 2.6.x / Akka HTTP 10.2.x — ostatnie wersje na
-Apache 2.0. Nowsze (2.7+) są na Business Source License i wymagają płatnej
-licencji przy komercyjnym użyciu. Alternatywa dla nowego kodu: Apache Pekko.

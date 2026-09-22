@@ -1,5 +1,5 @@
-# Konfiguracja scrapowania dla lokalnego stacku z compose.yaml.
-# Uruchamiane profilem: docker compose --profile observability up -d
+# Skad Prometheus ma zbierac metryki.
+# Wlaczenie: docker compose --profile observability up -d
 
 global:
   scrape_interval: 15s
@@ -9,9 +9,8 @@ scrape_configs:
   - job_name: akka-http-api
     metrics_path: /metrics
     static_configs:
-      # "api" to nazwa uslugi z compose.yaml — Docker rozwiazuje ja przez DNS
-      # w sieci compose. Port 8080 jest portem WEWNATRZ kontenera, wiec nie ma
-      # znaczenia, na co jest zmapowany na hoscie.
+      # "api" to nazwa uslugi z compose.yaml - Docker sam zamienia ja
+      # na adres. 8080 to port wewnatrz kontenera.
       - targets: ["api:8080"]
         labels:
           app: scala-akka-http-api

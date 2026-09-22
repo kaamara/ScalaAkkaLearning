@@ -12,15 +12,12 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-/** Definicje tras HTTP.
+/** Wszystkie adresy HTTP aplikacji.
   *
-  * Podzial /health vs /ready jest celowy i odpowiada rozroznieniu
-  * livenessProbe / readinessProbe w Kubernetesie:
-  *   - /health: proces zyje. Porazka => restart poda.
-  *   - /ready:  proces jest gotowy przyjmowac ruch. Porazka => pod
-  *     wypada z Service, ale nie jest restartowany.
-  * Mieszanie tych dwoch endpointow to najczestszy blad przy pierwszym
-  * wdrozeniu na klaster: przeciazona aplikacja wpada w petle restartow.
+  * Sa dwa osobne adresy do sprawdzania stanu i to nie pomylka:
+  *   - /health mowi "aplikacja zyje"       -> gdy nie odpowiada, restart
+  *   - /ready  mowi "moge przyjmowac ruch" -> gdy nie odpowiada, tylko
+  *     przestaje dostawac zadania, bez restartu
   */
 final class Routes(
     counter: ActorRef[CounterActor.Command],
@@ -33,9 +30,8 @@ final class Routes(
 
   private val startedAt = System.currentTimeMillis()
 
-  /** Przelacznik gotowosci — ustawiany na false przy rozpoczeciu
-    * wygaszania, zeby load balancer przestal kierowac ruch zanim
-    * proces zacznie sie zamykac.
+  /** Przelacznik "przyjmuje ruch". Przy zamykaniu idzie na false, zeby
+    * nowe zadania przestaly naplywac, zanim aplikacja sie wylaczy.
     */
   private val ready = new AtomicBoolean(true)
   def markNotReady(): Unit = ready.set(false)
@@ -112,14 +108,11 @@ final class Routes(
       }
     }
 
-  /** Owija trasy pomiarem czasu i zliczaniem odpowiedzi.
+  /** Mierzy czas kazdego zadania i zlicza odpowiedzi do metryk.
     *
-    * Route.seal jest tu konieczne, a nie kosmetyczne. Nieznana sciezka i zla
-    * metoda to w Akka HTTP *rejections*, nie odpowiedzi — normalnie zamieniaja
-    * sie w HttpResponse dopiero na zewnatrz, przy uszczelnianiu trasy przez
-    * serwer, czyli juz poza mapResponse. Bez seal ruch 4xx nie trafia do
-    * metryk wcale, a to zwykle pierwsza rzecz, ktorej szuka sie przy
-    * debugowaniu klienta walacego w zly endpoint.
+    * Route.seal jest tu potrzebne. Bez niego zle adresy (404) w ogole nie
+    * trafialyby do statystyk, a to pierwsza rzecz, ktorej sie szuka, gdy
+    * klient puka pod zly adres.
     */
   private def instrumented(inner: Route): Route =
     extractRequest { req =>

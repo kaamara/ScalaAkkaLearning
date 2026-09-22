@@ -1,7 +1,6 @@
 # --- sbt / Scala ---
-# target/ bez prefiksu lapie kazdy poziom: 01-kalkulator/target,
-# 03-http-api/project/target itd. Wzorzec ze slashem w SRODKU jest za to
-# zakotwiczony w korzeniu repo — dlatego meta-build sbt wymaga **/.
+# Wyniki kompilacji. "target/" bez ukosnika z przodu dziala na kazdym
+# poziomie, dlatego drugi wpis potrzebuje **/.
 target/
 **/project/project/
 .bsp/
@@ -26,7 +25,7 @@ Thumbs.db
 desktop.ini
 
 # --- sekrety ---
-# Plik z haslami do bazy trzymany lokalnie; wzorzec w .env.example.
+# Hasla zostaja na dysku i nie ida do repo. Wzorzec jest w .env.example.
 .env
 *.env
 !.env.example

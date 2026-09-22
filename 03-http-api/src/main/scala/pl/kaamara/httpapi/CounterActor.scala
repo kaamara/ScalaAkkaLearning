@@ -3,12 +3,11 @@ package pl.kaamara.httpapi
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 
-/** Aktor przechowujacy stan licznika.
+/** Aktor trzymajacy wartosc licznika.
   *
-  * Stan nie jest trzymany w polu klasy (var), tylko w parametrze funkcji
-  * budujacej kolejne zachowanie. Kazda zmiana stanu = zwrocenie nowego
-  * Behavior. Dzieki temu stan jest niedostepny z zewnatrz i nie ma
-  * wspoldzielonej mutowalnosci — to caly sens modelu aktorowego.
+  * Wartosc nie jest zwyklym polem klasy. Po kazdej zmianie aktor zwraca
+  * swoja nowa wersje z nowa liczba. Nikt z zewnatrz nie moze jej zmienic
+  * wprost - trzeba wyslac wiadomosc. Na tym polegaja aktory.
   */
 object CounterActor {
 

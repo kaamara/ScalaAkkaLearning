@@ -6,13 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
-# Domyslnie job dostaje token z prawem zapisu. Zaden job tutaj nie pisze do
-# repozytorium, wiec zabieramy to na poziomie workflow.
+# Zaden job nic nie zapisuje w repo, wiec dajemy tylko prawo do odczytu.
 permissions:
   contents: read
 
-# Kolejny push do tej samej galezi anuluje poprzedni przebieg. Bez tego trzy
-# pushe pod rzad trzymaja w kolejce trzy komplety buildow.
+# Nowy push anuluje poprzedni przebieg na tej samej galezi.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -22,8 +20,8 @@ env:
 
 jobs:
   # ---------------------------------------------------------------- testy --
-  # Jeden job na macierzy zamiast czterech kopii tych samych krokow.
-  # fail-fast: false, zeby blad w jednym projekcie nie ukryl wyniku reszty.
+  # Te same kroki dla kazdego z czterech projektow.
+  # fail-fast: false, zeby blad w jednym nie ukryl wyniku pozostalych.
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -43,16 +41,12 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          # Ta sama wersja co w obrazach runtime. Budowanie na 11 i uruchamianie
-          # na 17 znaczy, ze CI testuje inny bajtkod niz idzie na produkcje.
+          # Ta sama wersja Javy co w obrazach Dockera.
           java-version: '17'
-          # cache: sbt obsluguje ~/.sbt, ~/.ivy2 i ~/.cache/coursier, i sam
-          # liczy klucz z plikow builda danego projektu. Recznie ustawiony
-          # klucz latwo wskazac na zly podkatalog.
+          # Zapamietuje pobrane biblioteki miedzy przebiegami.
           cache: sbt
 
-      # Oficjalna akcja zamiast recznego curl na tarball. Wersje sbt i tak
-      # dyktuje project/build.properties kazdego projektu.
+      # Wersje sbt bierze z project/build.properties danego projektu.
       - uses: sbt/setup-sbt@v1
 
       - name: Kompilacja i testy
@@ -79,8 +73,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # Logowanie tylko gdy naprawde pchamy obraz. Na PR z forka sekrety sa
-      # puste i ten krok bylby czerwony bez powodu.
+      # Logujemy sie tylko wtedy, gdy naprawde wysylamy obraz.
       - name: Login do Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -93,8 +86,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
-          # Tag po SHA jest niezmienny i pozwala wskazac dokladnie ten build.
-          # :latest tylko z galezi domyslnej.
+          # Tag z numerem commita wskazuje dokladnie ten build.
+          # :latest powstaje tylko z galezi glownej.
           tags: |
             type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
@@ -103,8 +96,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.project }}
-          # Na pull requescie obraz sie buduje, ale nie trafia do rejestru.
-          # Wczesniej kazdy PR nadpisywal :latest na Docker Hubie.
+          # Przy pull requescie obraz sie buduje, ale nigdzie nie trafia.
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -113,9 +105,9 @@ jobs:
           sbom: true
           provenance: true
 
-  # ------------------------------------------------- smoke test compose'a --
-  # scala-docker-app to jedyny projekt z baza danych. Sam build obrazu nie
-  # mowi nic o tym, czy aplikacja wstaje i dogaduje sie z Postgresem.
+  # --------------------------------------------------- test calego stosu --
+  # Sam build obrazu nie mowi, czy aplikacja dogaduje sie z baza.
+  # Tutaj stawiamy cala aplikacje i klikamy po niej jak uzytkownik.
   compose-smoke:
     needs: test
     runs-on: ubuntu-latest
@@ -125,14 +117,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Compose ma wartosci domyslne, ale sprawdzamy tez sciezke z .env.
       - name: Przygotuj .env
         run: cp .env.example .env
 
       - name: Start stosu
         run: docker compose up -d --build --wait
 
-      # Port 8081 nie jest publikowany — caly ruch idzie przez nginx,
-      # dokladnie ta sama sciezka co z przegladarki.
+      # Caly ruch idzie przez nginx - tak samo jak z przegladarki.
       - name: Frontend serwowany przez nginx
         run: curl -fsS --retry 5 --retry-delay 3 http://localhost:8080/ | grep -q 'Panel Sterowania'
 

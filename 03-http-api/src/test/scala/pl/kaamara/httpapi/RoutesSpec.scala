@@ -6,8 +6,8 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-/** ScalatestRouteTest tworzy klasyczny ActorSystem. Zamieniamy go na
-  * typed przez `.toTyped` — to standardowy most miedzy oboma API.
+/** Narzedzie do testow daje starszy typ ActorSystem, a Routes potrzebuje
+  * nowszego. Zamienia je `.toTyped`.
   */
 class RoutesSpec extends AnyWordSpec with Matchers with ScalatestRouteTest with JsonSupport {
 

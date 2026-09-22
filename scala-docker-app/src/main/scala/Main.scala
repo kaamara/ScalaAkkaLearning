@@ -8,15 +8,11 @@ object Main extends cask.MainRoutes {
 
   private val MaxMessageLength = 500
 
-  /** Sekret bez wartosci domyslnej.
+  /** Czyta zmienna srodowiskowa albo od razu przerywa start.
     *
-    * Zapis `sys.env.getOrElse("DB_PASSWORD", "password")` sprawia, ze zle
-    * skonfigurowany kontener wstaje z dzialajacym haslem i nikt sie nie
-    * orientuje. Lepiej nie wystartowac wcale niz wystartowac na domyslnym.
-    *
-    * Poswiadczen do bazy nie hashuje sie — sterownik JDBC musi wyslac je
-    * doslownie. Chroni sie je zarzadzaniem sekretem: .env poza repo, dalej
-    * docker secret zamontowany jako plik, docelowo Key Vault.
+    * Celowo bez wartosci domyslnej dla hasla. Domyslne haslo znaczyloby,
+    * ze zle ustawiona aplikacja wstaje jak gdyby nigdy nic i nikt tego
+    * nie zauwaza. Lepiej, zeby nie wstala wcale i powiedziala dlaczego.
     */
   private def requiredEnv(name: String): String =
     sys.env.get(name).map(_.trim).filter(_.nonEmpty).getOrElse {
@@ -25,13 +21,17 @@ object Main extends cask.MainRoutes {
       )
     }
 
-  /** Pula polaczen.
+  /** Czyta zmienna srodowiskowa albo bierze wartosc domyslna.
+    * Dla ustawien, ktore nie sa tajne - host, port.
+    */
+  private def env(name: String, default: String): String =
+    sys.env.get(name).map(_.trim).filter(_.nonEmpty).getOrElse(default)
+
+  /** Pula gotowych polaczen do bazy.
     *
-    * Poprzednia wersja wolala DriverManager.getConnection przy kazdym
-    * zadaniu. Nawiazanie polaczenia z Postgresem to kilkadziesiat
-    * milisekund i osobny proces po stronie serwera; przy domyslnym limicie
-    * 100 polaczen wystarczy kilkadziesiat rownoleglych zadan, zeby baza
-    * zaczela odrzucac nowe.
+    * Otwieranie nowego polaczenia przy kazdym zapytaniu jest wolne i
+    * szybko przepelnia limit bazy. Tutaj polaczenia sa otwarte raz
+    * i pozyczane w kolko.
     */
   private val dataSource: HikariDataSource = {
     val config = new HikariConfig()
@@ -41,23 +41,22 @@ object Main extends cask.MainRoutes {
     config.setMaximumPoolSize(10)
     config.setConnectionTimeout(5000)
     config.setPoolName("scala-docker-app")
-    // Jawna klasa sterownika zamiast polegania na ServiceLoaderze.
-    // W fat JAR-ze wystarczy zla strategia scalania META-INF/services,
-    // zeby rejestracja sterownika zniknela i pula padla na starcie.
+    // Nazwa sterownika podana wprost. W jednym duzym pliku .jar
+    // automatyczne wykrywanie potrafi zawiesc.
     config.setDriverClassName("org.postgresql.Driver")
     new HikariDataSource(config)
   }
 
-  /** conn.close() na polaczeniu z puli nie zamyka socketu, tylko oddaje je
-    * z powrotem. Bez tego finally pula wycieka i zatyka sie po 10 zadaniach. */
+  /** Pozycza polaczenie z puli i zawsze je oddaje.
+    * Bez tego "finally" pula skonczylaby sie po 10 zapytaniach. */
   private def withConnection[T](body: Connection => T): T = {
     val conn = dataSource.getConnection
     try body(conn)
     finally conn.close()
   }
 
-  /** Retry, bo healthcheck compose'a mowi tylko, ze Postgres przyjmuje
-    * polaczenia — nie, ze zdazyl odtworzyc dane z wolumenu. */
+  /** Tworzy tabele, jesli jej nie ma.
+    * Probuje kilka razy, bo baza po starcie potrzebuje chwili. */
   @tailrec
   private def setupDatabase(attemptsLeft: Int = 10): Unit = {
     val attempt = Try {
@@ -86,11 +85,9 @@ object Main extends cask.MainRoutes {
     }
   }
 
-  // Zadnych naglowkow Access-Control-*: nginx wystawia backend pod /api/
-  // tego samego originu co frontend, wiec przegladarka nie widzi tu
-  // zadania cross-origin. Wczesniejsze "Access-Control-Allow-Origin: *"
-  // na endpoincie zapisujacym do bazy pozwalalo dowolnej stronie w
-  // internecie wyslac POST w imieniu odwiedzajacego.
+  // Brak naglowkow CORS i tak ma byc. Strona i backend siedza pod tym
+  // samym adresem (nginx), wiec nie sa potrzebne. Gdyby je dodac,
+  // dowolna strona w internecie mogla by pisac do naszej bazy.
 
   @cask.post("/add")
   def addMessage(req: cask.Request): cask.Response[String] = {
@@ -128,8 +125,10 @@ object Main extends cask.MainRoutes {
   @cask.get("/")
   def hello(): cask.Response[String] = cask.Response("Backend gotowy!")
 
-  override def host: String = "0.0.0.0"
-  override def port: Int = 8081
+  // Adres i port ze zmiennych srodowiskowych, zeby dalo sie je zmienic
+  // bez budowania obrazu od nowa.
+  override def host: String = env("HTTP_HOST", "0.0.0.0")
+  override def port: Int    = env("HTTP_PORT", "8081").toInt
 
   sys.addShutdownHook(dataSource.close())
 

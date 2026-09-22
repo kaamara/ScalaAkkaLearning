@@ -13,8 +13,8 @@ object Main {
 
   private val log = LoggerFactory.getLogger(getClass)
 
-  /** Konfiguracja z ENV, nie z pliku — kontener ma byc konfigurowalny
-    * bez przebudowy obrazu (12-factor, III. Config).
+  /** Ustawienia czytane ze zmiennych srodowiskowych, nie z pliku.
+    * Dzieki temu port zmienia sie bez budowania obrazu od nowa.
     */
   private def env(name: String, default: String): String =
     sys.env.getOrElse(name, default)
@@ -41,8 +41,8 @@ object Main {
             val addr = binding.localAddress
             log.info("Nasluchiwanie na http://{}:{}", addr.getHostString, addr.getPort)
 
-            // Przy SIGTERM: najpierw oznacz jako not-ready, zeby LB
-            // przestal kierowac ruch, dopiero potem zamykaj polaczenia.
+            // Przy zamykaniu najpierw mowimy "nie przyjmuje ruchu",
+            // a dopiero potem zamykamy polaczenia.
             CoordinatedShutdown(system)
               .addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "markNotReady") { () =>
                 log.info("Otrzymano sygnal zamkniecia — oznaczam jako not ready")

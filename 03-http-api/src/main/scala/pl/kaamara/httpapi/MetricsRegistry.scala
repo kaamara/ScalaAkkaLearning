@@ -5,13 +5,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.LongAdder
 import scala.jdk.CollectionConverters._
 
-/** Minimalny rejestr metryk renderowany do formatu tekstowego Prometheusa.
+/** Zbiera statystyki i wypisuje je w formacie, ktory czyta Prometheus.
   *
-  * Swiadomie bez biblioteki (micrometer / prometheus-client) — chodzi o to,
-  * zeby bylo widac, jak ten format wyglada od srodka. W projekcie
-  * produkcyjnym uzywa sie gotowego klienta.
+  * Bez biblioteki, celowo - zeby bylo widac, jak ten format wyglada
+  * od srodka. W prawdziwym projekcie bierze sie gotowa biblioteke.
   *
-  * Format: nazwa{etykieta="wartosc",...} liczba
+  * Format: nazwa{etykieta="wartosc"} liczba
   */
 final class MetricsRegistry {
 
@@ -21,19 +20,18 @@ final class MetricsRegistry {
   private val durations = new ConcurrentHashMap[Key, LongAdder]()
   private val startedAt = System.currentTimeMillis()
 
-  /** Rejestruje jedno obsluzone zadanie HTTP. */
+  /** Zapisuje jedno obsluzone zadanie. */
   def record(method: String, path: String, status: Int, durationNanos: Long): Unit = {
     val key = Key(method, normalize(path, status), status)
     requests.computeIfAbsent(key, _ => new LongAdder()).increment()
     durations.computeIfAbsent(key, _ => new LongAdder()).add(durationNanos / 1000000L)
   }
 
-  /** Ogranicza kardynalnosc etykiet. Bez tego kazda unikalna sciezka
-    * (np. /counter/123) tworzy nowa serie czasowa i zabija Prometheusa.
+  /** Skleja podobne adresy w jedna nazwe.
     *
-    * Przy 404 sciezka jest z definicji dowolna — kazdy skaner portow albo
-    * literowka klienta tworzylaby kolejna serie. Zwijamy ja do jednej
-    * etykiety: interesuje nas ile jest pudel, nie w co konkretnie.
+    * Bez tego kazdy adres /counter/123 bylby osobna metryka i Prometheus
+    * zapchalby sie po chwili. Wszystkie bledy 404 ida do jednego worka:
+    * wazne jest ile ich bylo, a nie pod jakim adresem.
     */
   private def normalize(path: String, status: Int): String =
     if (status == 404) "/{unmatched}"

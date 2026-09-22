@@ -8,13 +8,14 @@ libraryDependencies ++= Seq(
   "org.scalatest"     %% "scalatest"    % "3.2.17"  % Test
 )
 
+// Sklejanie kilku bibliotek w jeden plik .jar. Pliki o tych samych
+// nazwach trzeba potraktowac osobno, inaczej assembly zglasza konflikt.
 assembly / assemblyMergeStrategy := {
   case PathList("reference.conf") => MergeStrategy.concat
   case PathList("META-INF", _*)   => MergeStrategy.discard
   case _                          => MergeStrategy.first
 }
 
-// Stala nazwa artefaktu zamiast globa target/scala-2.13/*.jar w Dockerfile.
-// Glob dopasowuje tez jar z "sbt package" i potrafi skopiowac zly plik.
+// Zawsze ta sama nazwa pliku, zeby Dockerfile wiedzial, co kopiowac.
 assembly / assemblyJarName := "app.jar"
 assembly / mainClass       := Some("Main")

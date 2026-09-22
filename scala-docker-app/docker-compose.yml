@@ -1,19 +1,28 @@
-# Haslo i uzytkownik bazy pochodza z pliku .env (nieversjonowanego).
-# Wzorzec do skopiowania: .env.example.
+# Uruchomienie: docker compose up --build
+# Strona: http://localhost:8080
+#
+# Zmienne ponizej maja wartosci domyslne, wiec plik .env nie jest wymagany.
+# Jesli chcesz inne dane do bazy - skopiuj .env.example do .env i zmien.
+#
+# UWAGA: domyslne haslo jest widoczne w repo. Wystarczy do nauki na
+# wlasnym komputerze, ale nie do niczego wystawionego na internet.
+#
+# Wartosci domyslne musza byc takie same w obu miejscach: baza dostaje je
+# jako POSTGRES_*, aplikacja jako DB_*.
 services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?ustaw POSTGRES_USER w .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ustaw POSTGRES_PASSWORD w .env}
-      POSTGRES_DB: ${POSTGRES_DB:?ustaw POSTGRES_DB w .env}
-    # Bez nazwanego wolumenu "docker compose down" kasowal cala baze razem
-    # z kontenerem. Wolumen przezywa down; usuwa go dopiero "down -v".
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-mojabaza}
+    # Dane bazy trzymane poza kontenerem, zeby przetrwaly "down".
+    # Kasuje je dopiero "down -v".
+    # Uwaga: zmiana hasla dziala tylko na nowym wolumenie.
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      # Podwojny $$ — pierwszy znak ucieka przed podstawieniem po stronie
-      # compose'a, zeby zmienna rozwinela sie dopiero w kontenerze.
+      # Podwojny $$ - zmienna ma sie rozwinac w kontenerze, nie tutaj.
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
@@ -27,29 +36,31 @@ services:
 
   scala-app:
     build: .
+    # Czeka, az baza bedzie gotowa.
     depends_on:
       db:
         condition: service_healthy
+    # Te same wartosci domyslne co wyzej, tylko pod innymi nazwami.
     environment:
-      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-    # Port celowo nieopublikowany na hoscie. Jedyne wejscie do backendu
-    # prowadzi przez nginx, wiec nie da sie ominac proxy ani trafic na
-    # aplikacje bezposrednio z sieci lokalnej.
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-mojabaza}
+      DB_USER: ${POSTGRES_USER:-app}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      HTTP_PORT: "${BACKEND_PORT:-8081}"
+    # Port widoczny tylko wewnatrz sieci compose. Z zewnatrz wchodzi sie
+    # przez nginx, wiec backendu nie da sie ominac.
     expose:
-      - "8081"
+      - "${BACKEND_PORT:-8081}"
     healthcheck:
-      # 127.0.0.1, nie localhost. W obrazach na musl (alpine) getaddrinfo
-      # zwraca dla "localhost" najpierw ::1, a busybox wget probuje tylko
-      # pierwszego adresu i nie robi fallbacku na IPv4.
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8081/"]
+      # CMD-SHELL, zeby $$HTTP_PORT rozwinelo sie w kontenerze.
+      # 127.0.0.1 zamiast localhost - na alpine localhost wskazuje najpierw
+      # na IPv6, a serwer slucha tylko po IPv4.
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:$${HTTP_PORT}/ || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 30s
     restart: unless-stopped
-    # Bez limitu JVM widzi cala pamiec hosta i ustawia heap na 1/4 tej wartosci.
+    # Bez limitu Java widzi cala pamiec komputera i bierze jej za duzo.
     deploy:
       resources:
         limits:
@@ -60,17 +71,22 @@ services:
     depends_on:
       scala-app:
         condition: service_healthy
+    # Strona na http://localhost:8080 (port zmienisz przez FRONTEND_PORT).
     ports:
-      - "8080:80"
+      - "${FRONTEND_PORT:-8080}:80"
+    # Nginx musi wiedziec, na ktory port backendu kierowac ruch.
+    # FILTER ogranicza podmiane do zmiennych na BACKEND_, zeby envsubst
+    # nie zjadl wlasnych zmiennych nginxa ($uri, $host...).
+    environment:
+      BACKEND_PORT: "${BACKEND_PORT:-8081}"
+      NGINX_ENVSUBST_FILTER: "BACKEND_"
     volumes:
       - ./frontend:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Pliki z /etc/nginx/templates obraz sam przepuszcza przez envsubst
+      # i zapisuje wynik do /etc/nginx/conf.d.
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
     healthcheck:
-      # nginx z samym "listen 80" slucha wylacznie na IPv4. Skrypt
-      # 10-listen-on-ipv6-by-default.sh z obrazu dopisalby "listen [::]:80",
-      # ale nie moze — config jest zamontowany read-only. Healthcheck musi
-      # wiec pytac jawnie o 127.0.0.1, inaczej trafia w ::1 i dostaje
-      # connection refused mimo dzialajacego serwera.
+      # Tu tez 127.0.0.1 - nginx slucha tylko po IPv4.
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 10s
       timeout: 3s

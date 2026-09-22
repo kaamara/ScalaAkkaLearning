@@ -2,8 +2,7 @@ ThisBuild / scalaVersion := "2.13.14"
 ThisBuild / organization := "pl.kaamara"
 ThisBuild / version      := "0.1.0"
 
-// Akka 2.6.x / Akka HTTP 10.2.x to ostatnie wersje na licencji Apache 2.0.
-// Nowsze (2.7+) sa na BSL i wymagaja platnej licencji przy komercyjnym uzyciu.
+// Ostatnie darmowe wersje Akki. Nowsze wymagaja platnej licencji.
 val AkkaVersion     = "2.6.20"
 val AkkaHttpVersion = "10.2.10"
 
@@ -24,15 +23,15 @@ lazy val root = (project in file("."))
     ),
     scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked"),
 
-    // Bez tego "sbt run" konczy sie zaraz po powrocie z main i serwer ginie razem
-    // z JVM sbt. Forkowany proces zyje az do Ctrl+C - tak samo jak w IntelliJ.
+    // Bez tego "sbt run" konczylby serwer od razu po starcie.
+    // Teraz dziala az do Ctrl+C.
     Compile / run / fork := true,
 
-    // fat JAR: docelowa nazwa artefaktu kopiowanego w Dockerfile
+    // Zawsze ta sama nazwa pliku, zeby Dockerfile wiedzial, co kopiowac.
     assembly / assemblyJarName := "app.jar",
     assembly / mainClass       := Some("pl.kaamara.httpapi.Main"),
     assembly / assemblyMergeStrategy := {
-      // pliki reference.conf z modulow Akka trzeba skleic, nie nadpisac
+      // Ustawienia z kilku modulow Akki trzeba skleic, a nie nadpisac.
       case PathList("reference.conf")    => MergeStrategy.concat
       case PathList("application.conf")  => MergeStrategy.concat
       case "module-info.class"           => MergeStrategy.discard

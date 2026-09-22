@@ -32,8 +32,14 @@ Szczegóły w README każdego z nich.
 
 `.github/workflows/ci.yml`, wyzwalany przy pushu i PR do `main`:
 
-- `build` — testy i obraz `01-kalkulator` (`kaamara/scala-akka-kalkulator`)
-- `test-http-api` → `build-http-api` — testy i obraz `03-http-api`
-  (`kaamara/scala-akka-http-api`), tagowany po `github.sha`
+- `test` — macierz po wszystkich czterech projektach, `sbt test` na Javie 17
+  (tej samej, na której działają obrazy runtime)
+- `build` — obraz Dockera każdego projektu, tagowany po `github.sha`, a `latest`
+  tylko z gałęzi domyślnej. Na pull requeście obraz się buduje, ale **nie** trafia
+  do rejestru
+- `compose-smoke` — podnosi `scala-docker-app` przez Compose i sprawdza
+  end-to-end, że frontend się serwuje, proxy działa i wpis dociera do bazy
 
-`02-licznik` nie ma jeszcze joba.
+Obrazy na Docker Hubie: `kaamara/scala-akka-kalkulator`,
+`kaamara/scala-akka-licznik`, `kaamara/scala-akka-http-api`,
+`kaamara/scala-docker-app`.

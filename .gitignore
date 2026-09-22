@@ -24,3 +24,12 @@ replay_pid*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# --- sekrety ---
+# Plik z haslami do bazy trzymany lokalnie; wzorzec w .env.example.
+.env
+*.env
+!.env.example
+
+# --- narzedzia agentow ---
+.claude/

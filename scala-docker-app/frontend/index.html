@@ -18,7 +18,7 @@
 </div>
     <script>
         async function loadMessages() {
-    const res = await fetch('http://localhost:8081/messages');
+    const res = await fetch('/api/messages');
     const data = await res.text();
     document.getElementById('history').innerText = data || "Brak wiadomości.";
 }
@@ -28,7 +28,7 @@ async function sendData() {
     const val = input.value;
     if(!val) return;
 
-    await fetch('http://localhost:8081/add', { method: 'POST', body: val });
+    await fetch('/api/add', { method: 'POST', body: val });
     input.value = '';
     loadMessages(); 
 }

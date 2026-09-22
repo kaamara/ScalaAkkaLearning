@@ -6,6 +6,4 @@ project/project/
 .vscode/
 .idea/
 .git/
-.env
 *.log
-postgres-data/

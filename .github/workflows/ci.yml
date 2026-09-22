@@ -6,85 +6,84 @@ on:
   pull_request:
     branches: [ main ]
 
+# Domyslnie job dostaje token z prawem zapisu. Zaden job tutaj nie pisze do
+# repozytorium, wiec zabieramy to na poziomie workflow.
+permissions:
+  contents: read
+
+# Kolejny push do tej samej galezi anuluje poprzedni przebieg. Bez tego trzy
+# pushe pod rzad trzymaja w kolejce trzy komplety buildow.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY_NAMESPACE: kaamara
+
 jobs:
-  build:
+  # ---------------------------------------------------------------- testy --
+  # Jeden job na macierzy zamiast czterech kopii tych samych krokow.
+  # fail-fast: false, zeby blad w jednym projekcie nie ukryl wyniku reszty.
+  test:
     runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: temurin
-          java-version: 11
-
-      - name: Install SBT
-        run: |
-          curl -fL https://github.com/sbt/sbt/releases/download/v1.9.7/sbt-1.9.7.tgz | tar xz
-          echo "$PWD/sbt/bin" >> $GITHUB_PATH
-
-      - name: Cache SBT
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-          key: sbt-${{ hashFiles('01-kalkulator/build.sbt') }}
-
-      - name: Compile
-        run: cd 01-kalkulator && sbt compile
-
-      - name: Test
-        run: cd 01-kalkulator && sbt test
-
-      - name: Build JAR
-        run: cd 01-kalkulator && sbt assembly
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./01-kalkulator
-          push: true
-          tags: kaamara/scala-akka-kalkulator:latest
-
-  test-http-api:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - 01-kalkulator
+          - 02-licznik
+          - 03-http-api
+          - scala-docker-app
     defaults:
       run:
-        working-directory: 03-http-api
+        working-directory: ${{ matrix.project }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
+          # Ta sama wersja co w obrazach runtime. Budowanie na 11 i uruchamianie
+          # na 17 znaczy, ze CI testuje inny bajtkod niz idzie na produkcje.
           java-version: '17'
+          # cache: sbt obsluguje ~/.sbt, ~/.ivy2 i ~/.cache/coursier, i sam
+          # liczy klucz z plikow builda danego projektu. Recznie ustawiony
+          # klucz latwo wskazac na zly podkatalog.
           cache: sbt
 
+      # Oficjalna akcja zamiast recznego curl na tarball. Wersje sbt i tak
+      # dyktuje project/build.properties kazdego projektu.
       - uses: sbt/setup-sbt@v1
 
-      - name: Testy
-        run: sbt test
+      - name: Kompilacja i testy
+        run: sbt -batch test
 
-  build-http-api:
-    # bez needs job budowalby sie rownolegle z testami i nic by nie blokowal
-    needs: test-http-api
+  # --------------------------------------------------------------- obrazy --
+  build:
+    needs: test
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: 01-kalkulator
+            image: scala-akka-kalkulator
+          - project: 02-licznik
+            image: scala-akka-licznik
+          - project: 03-http-api
+            image: scala-akka-http-api
+          - project: scala-docker-app
+            image: scala-docker-app
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      # Logowanie tylko gdy naprawde pchamy obraz. Na PR z forka sekrety sa
+      # puste i ten krok bylby czerwony bez powodu.
+      - name: Login do Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -93,7 +92,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/scala-akka-http-api
+          images: ${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
+          # Tag po SHA jest niezmienny i pozwala wskazac dokladnie ten build.
+          # :latest tylko z galezi domyslnej.
           tags: |
             type=sha,format=long
             type=raw,value=latest,enable={{is_default_branch}}
@@ -101,7 +102,9 @@ jobs:
       - name: Build i push
         uses: docker/build-push-action@v6
         with:
-          context: 03-http-api
+          context: ${{ matrix.project }}
+          # Na pull requescie obraz sie buduje, ale nie trafia do rejestru.
+          # Wczesniej kazdy PR nadpisywal :latest na Docker Hubie.
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -109,3 +112,47 @@ jobs:
           cache-to: type=gha,mode=max
           sbom: true
           provenance: true
+
+  # ------------------------------------------------- smoke test compose'a --
+  # scala-docker-app to jedyny projekt z baza danych. Sam build obrazu nie
+  # mowi nic o tym, czy aplikacja wstaje i dogaduje sie z Postgresem.
+  compose-smoke:
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scala-docker-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Przygotuj .env
+        run: cp .env.example .env
+
+      - name: Start stosu
+        run: docker compose up -d --build --wait
+
+      # Port 8081 nie jest publikowany — caly ruch idzie przez nginx,
+      # dokladnie ta sama sciezka co z przegladarki.
+      - name: Frontend serwowany przez nginx
+        run: curl -fsS --retry 5 --retry-delay 3 http://localhost:8080/ | grep -q 'Panel Sterowania'
+
+      - name: Backend odpowiada przez proxy
+        run: curl -fsS http://localhost:8080/api/ | grep -q 'Backend gotowy'
+
+      - name: Zapis i odczyt z bazy
+        run: |
+          curl -fsS -X POST --data 'smoke-test-ci' http://localhost:8080/api/add
+          curl -fsS http://localhost:8080/api/messages | grep -q 'smoke-test-ci'
+
+      - name: Pusta wiadomosc odrzucona (400)
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '' http://localhost:8080/api/add)
+          test "$code" = "400" || { echo "oczekiwano 400, dostalem $code"; exit 1; }
+
+      - name: Logi przy bledzie
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Sprzatanie
+        if: always()
+        run: docker compose down -v

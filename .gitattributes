@@ -1,0 +1,6 @@
+# Pliki wykonywane wewnatrz obrazow linuksowych musza miec LF.
+# CRLF w skrypcie daje "bad interpreter: no such file or directory",
+# CRLF w Dockerfile psuje ostatnia instrukcje przy niektorych parserach.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf

@@ -1,3 +1,5 @@
+name         := "kalkulator"
+version      := "0.1.0"
 scalaVersion := "2.13.12"
 
 libraryDependencies ++= Seq(
@@ -10,3 +12,8 @@ assembly / assemblyMergeStrategy := {
   case PathList("META-INF", _*)   => MergeStrategy.discard
   case _                          => MergeStrategy.first
 }
+
+// Stala nazwa artefaktu zamiast globa target/scala-2.13/*.jar w Dockerfile.
+// Glob dopasowuje tez jar z "sbt package" i potrafi skopiowac zly plik.
+assembly / assemblyJarName := "app.jar"
+assembly / mainClass       := Some("Main")

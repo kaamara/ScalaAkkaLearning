@@ -1,11 +1,7 @@
-# Uruchomienie: docker compose up --build
-# API: http://localhost:8080
 services:
   api:
     build: .
     image: kaamara/scala-akka-http-api:local
-    # Port zmienisz jedna zmienna: HTTP_PORT=9090 docker compose up
-    # (wtedy popraw tez adres w prometheus.yml).
     ports:
       - "${HTTP_PORT:-8080}:${HTTP_PORT:-8080}"
     environment:

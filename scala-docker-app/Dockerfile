@@ -4,7 +4,6 @@
 # Obraz z gotowym sbt i Java 17.
 FROM sbtscala/scala-sbt:eclipse-temurin-jammy-17.0.10_7_1.9.9_2.13.13 AS build
 
-# Czytelniejszy log builda.
 ENV SBT_OPTS="-Dsbt.ci=true -Dsbt.color=false -Dsbt.supershell=false"
 
 WORKDIR /build

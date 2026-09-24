@@ -56,11 +56,6 @@ ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     TZ=UTC
 
-# JAVA_BASE_OPTS: ustawienia stale, m.in. limit pamieci z kontenera.
-# JAVA_OPTS: puste, miejsce na wlasne flagi:
-#   docker run -e JAVA_OPTS="-Xmx256m" ...
-# exit-jvm jest tutaj, a nie w application.conf, bo tamten plik dziala
-# takze w testach i ubijalby sbt w polowie.
 ENV JAVA_BASE_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -Dakka.coordinated-shutdown.exit-jvm=on" \
     JAVA_OPTS=""
 

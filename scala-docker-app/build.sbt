@@ -8,7 +8,9 @@ libraryDependencies ++= Seq(
   // Pula polaczen do bazy.
   "com.zaxxer"     % "HikariCP"   % "5.1.0",
   // Bez tego pula sypie ostrzezeniem o braku logowania.
-  "org.slf4j"      % "slf4j-simple" % "2.0.13"
+  "org.slf4j"      % "slf4j-simple" % "2.0.13",
+
+  "org.scalatest" %% "scalatest"   % "3.2.18" % Test
 )
 
 // Zawsze ta sama nazwa pliku, zeby Dockerfile wiedzial, co kopiowac.

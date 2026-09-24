@@ -67,7 +67,11 @@ używa się `micrometer` albo `prometheus-client`.
 `/counter/{id}`, a każde 404 jako `/{unmatched}`. Bez tego każdy unikalny URL
 tworzy osobną serię czasową — klasyczny sposób na przewrócenie Prometheusa.
 
-**Obraz multi-stage, non-root, 421 MB.** Tag bazowy pinowany, a JVM dostaje
+**Obraz multi-stage, non-root, 421 MB.** Etap build stoi na przypiętym tagu
+z konkretną wersją JDK, sbt i Scali, więc kompilacja jest powtarzalna. Runtime
+`eclipse-temurin:17-jre-jammy` celowo nie jest przypięty do patcha: każdy
+rebuild dostaje najnowsze poprawki bezpieczeństwa JRE i Ubuntu. Ceną jest to,
+że dwa buildy z tego samego commita mogą mieć inną warstwę bazową. JVM dostaje
 `MaxRAMPercentage` zamiast `-Xmx`, żeby respektowała limit pamięci kontenera.
 
 

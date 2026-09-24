@@ -11,10 +11,18 @@ przez nginx.
 
 ## Uruchomienie
 
-Hasło do bazy nie jest w repozytorium. Najpierw skopiuj wzorzec:
+Działa od razu po sklonowaniu, bez żadnych plików konfiguracyjnych:
+
+```bash
+docker compose up -d --build
+```
+
+Plik `.env` jest opcjonalny. Potrzebny tylko wtedy, gdy chcesz własne dane
+do bazy zamiast domyślnych:
 
 ```bash
 cp .env.example .env     # i podmień POSTGRES_PASSWORD
+docker compose down -v   # nowe hasło działa dopiero na nowym wolumenie
 docker compose up -d --build
 ```
 
@@ -24,6 +32,13 @@ docker compose up -d --build
 ```bash
 docker compose down      # dane w bazie zostają (wolumen postgres-data)
 docker compose down -v   # kasuje też wolumen
+```
+
+Testy jednostkowe sprawdzają walidację wiadomości: puste body, limit długości,
+obcinanie białych znaków. Nie potrzebują bazy:
+
+```bash
+sbt test
 ```
 
 ## Endpointy
@@ -40,6 +55,14 @@ Backend nie ma wartości domyślnych dla `DB_URL`, `DB_USER` i `DB_PASSWORD` —
 przy braku którejkolwiek nie wstaje. To celowe: fallback w rodzaju
 `getOrElse("password")` sprawia, że źle skonfigurowany kontener działa na
 domyślnym haśle i nikt tego nie zauważa.
+
+**Domyślne hasło w `docker-compose.yml` jest jawne i to świadoma decyzja.**
+`docker compose up` ma działać zaraz po sklonowaniu, dlatego Compose podstawia
+hasło `postgres`, gdy `POSTGRES_PASSWORD` nie jest ustawione. Ta wartość żyje
+tylko w pliku do lokalnego uruchomienia, a nie w obrazie. Baza nie publikuje
+portu na hoście, więc widać ją wyłącznie z sieci Compose. W każdym innym
+środowisku hasło przychodzi z sekretu, a brak konfiguracji zatrzymuje backend
+przy starcie.
 
 Poświadczeń do bazy się nie hashuje — sterownik JDBC musi wysłać je dosłownie.
 Chroni się je zarządzaniem sekretem: `.env` poza repozytorium, dalej

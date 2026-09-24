@@ -6,8 +6,6 @@ import scala.util.{Failure, Success, Try}
 
 object Main extends cask.MainRoutes {
 
-  private val MaxMessageLength = 500
-
   /** Czyta zmienna srodowiskowa albo od razu przerywa start.
     *
     * Celowo bez wartosci domyslnej dla hasla. Domyslne haslo znaczyloby,
@@ -89,25 +87,23 @@ object Main extends cask.MainRoutes {
   // samym adresem (nginx), wiec nie sa potrzebne. Gdyby je dodac,
   // dowolna strona w internecie mogla by pisac do naszej bazy.
 
+  // Sprawdzanie tresci siedzi w MessageValidation, zeby dalo sie je
+  // przetestowac bez bazy.
   @cask.post("/add")
-  def addMessage(req: cask.Request): cask.Response[String] = {
-    val text = req.text().trim
-
-    if (text.isEmpty)
-      cask.Response("Pusta wiadomosc", statusCode = 400)
-    else if (text.length > MaxMessageLength)
-      cask.Response(s"Wiadomosc dluzsza niz $MaxMessageLength znakow", statusCode = 413)
-    else {
-      withConnection { conn =>
-        val ps = conn.prepareStatement("INSERT INTO messages (content) VALUES (?)")
-        try {
-          ps.setString(1, text)
-          ps.executeUpdate()
-        } finally ps.close()
-      }
-      cask.Response("Zapisano!")
+  def addMessage(req: cask.Request): cask.Response[String] =
+    MessageValidation.validate(req.text()) match {
+      case Left(rejection) =>
+        cask.Response(rejection.message, statusCode = rejection.statusCode)
+      case Right(text) =>
+        withConnection { conn =>
+          val ps = conn.prepareStatement("INSERT INTO messages (content) VALUES (?)")
+          try {
+            ps.setString(1, text)
+            ps.executeUpdate()
+          } finally ps.close()
+        }
+        cask.Response("Zapisano!")
     }
-  }
 
   @cask.get("/messages")
   def getMessages(): cask.Response[String] = withConnection { conn =>

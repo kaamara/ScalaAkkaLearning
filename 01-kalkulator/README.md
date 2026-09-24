@@ -19,4 +19,4 @@ docker run --rm -it kalkulator
 
 ## Stack
 
-Scala 2.13, Akka 2.6.21, obraz na Temurin 11.
+Scala 2.13, Akka 2.6.21, obraz na Temurin 17 (JRE).

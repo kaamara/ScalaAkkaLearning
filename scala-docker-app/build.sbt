@@ -1,6 +1,6 @@
 name         := "scala-docker-app"
 version      := "0.1"
-scalaVersion := "2.13.12"
+scalaVersion := "2.13.13"
 
 libraryDependencies ++= Seq(
   "com.lihaoyi"  %% "cask"       % "0.9.1",

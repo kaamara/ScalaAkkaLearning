@@ -5,10 +5,11 @@ import akka.util.Timeout
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-case class Add(a: Int, b: Int)
-case class Subtract(a: Int, b: Int)
-case class Multiply(a: Int, b: Int)
-case class Divide(a: Int, b: Int)
+sealed trait Operacja
+case class Add(a: Int, b: Int)      extends Operacja
+case class Subtract(a: Int, b: Int) extends Operacja
+case class Multiply(a: Int, b: Int) extends Operacja
+case class Divide(a: Int, b: Int)   extends Operacja
 
 // Odpowiedzi aktora. Aktor odsyla wynik nadawcy zamiast go wypisywac -
 // dzieki temu test moze sprawdzic, co przyszlo.
@@ -26,6 +27,31 @@ class KalkulatorActor extends Actor {
   }
 }
 
+/** Zamienia linie wpisana przez uzytkownika na operacje.
+  *
+  * Osobno od petli w Main, zeby dalo sie to przetestowac bez klawiatury.
+  * Zle wejscie daje None zamiast wyjatku - "abc + 5" albo liczba spoza
+  * zakresu Int nie moga wywrocic programu.
+  */
+object Parser {
+  def parse(line: String): Option[Operacja] =
+    line.trim.split("""\s+""") match {
+      case Array(a, op, b) =>
+        for {
+          x <- a.toIntOption
+          y <- b.toIntOption
+          operacja <- op match {
+            case "+" => Some(Add(x, y))
+            case "-" => Some(Subtract(x, y))
+            case "*" => Some(Multiply(x, y))
+            case "/" => Some(Divide(x, y))
+            case _   => None
+          }
+        } yield operacja
+      case _ => None
+    }
+}
+
 object Main extends App {
   val system     = ActorSystem("kalkulator-system")
   val kalkulator = system.actorOf(Props[KalkulatorActor](), "kalkulator")
@@ -38,22 +64,17 @@ object Main extends App {
 
   var running = true
   while (running) {
-    val input = scala.io.StdIn.readLine("> ")
-    input.trim match {
-      case "exit" => running = false
-      case line =>
-        val operacja = line.split(" ") match {
-          case Array(a, "+", b) => Some(Add(a.toInt, b.toInt))
-          case Array(a, "-", b) => Some(Subtract(a.toInt, b.toInt))
-          case Array(a, "*", b) => Some(Multiply(a.toInt, b.toInt))
-          case Array(a, "/", b) => Some(Divide(a.toInt, b.toInt))
-          case _                => None
-        }
-
-        operacja match {
+    // readLine zwraca null, gdy wejscie sie skonczy: Ctrl+D,
+    // potok albo "docker run" bez -it. Traktujemy to jak "exit".
+    Option(scala.io.StdIn.readLine("> ")).map(_.trim) match {
+      case None | Some("exit") =>
+        running = false
+      case Some(line) =>
+        Parser.parse(line) match {
           case None =>
             println("Nieprawidlowy format. Przyklad: 10 + 5")
           case Some(op) =>
+            // Czekamy na odpowiedz aktora, zanim pokazemy kolejny prompt.
             Await.result((kalkulator ? op).mapTo[Odpowiedz], timeout.duration) match {
               case Wynik(value)  => println(s"Wynik: $value")
               case Blad(message) => println(s"Blad: $message")

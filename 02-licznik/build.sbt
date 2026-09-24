@@ -1,6 +1,6 @@
 name         := "licznik"
 version      := "0.1.0"
-scalaVersion := "2.13.12"
+scalaVersion := "2.13.13"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor"   % "2.6.21",

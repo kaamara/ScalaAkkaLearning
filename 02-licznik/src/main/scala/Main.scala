@@ -25,7 +25,7 @@ object Main extends App {
   implicit val timeout: Timeout = Timeout(3.seconds)
   import system.dispatcher
 
-  val licznik = system.actorOf(Props[LicznikActor], "licznik")
+  val licznik = system.actorOf(Props[LicznikActor](), "licznik")
 
   licznik ! Increment
   licznik ! Increment

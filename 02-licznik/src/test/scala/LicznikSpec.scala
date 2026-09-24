@@ -22,13 +22,13 @@ class LicznikSpec
   "LicznikActor" should {
 
     "zwrocic 0 na starcie" in {
-      val licznik = system.actorOf(akka.actor.Props[LicznikActor])
+      val licznik = system.actorOf(akka.actor.Props[LicznikActor]())
       val result = Await.result(licznik ? GetCount, 3.seconds)
       result shouldEqual 0
     }
 
     "zwiekszyc licznik po Increment" in {
-      val licznik = system.actorOf(akka.actor.Props[LicznikActor])
+      val licznik = system.actorOf(akka.actor.Props[LicznikActor]())
       licznik ! Increment
       licznik ! Increment
       val result = Await.result(licznik ? GetCount, 3.seconds)
@@ -36,7 +36,7 @@ class LicznikSpec
     }
 
     "zmniejszyc licznik po Decrement" in {
-      val licznik = system.actorOf(akka.actor.Props[LicznikActor])
+      val licznik = system.actorOf(akka.actor.Props[LicznikActor]())
       licznik ! Increment
       licznik ! Decrement
       val result = Await.result(licznik ? GetCount, 3.seconds)
@@ -44,7 +44,7 @@ class LicznikSpec
     }
 
     "zerowac licznik po Reset" in {
-      val licznik = system.actorOf(akka.actor.Props[LicznikActor])
+      val licznik = system.actorOf(akka.actor.Props[LicznikActor]())
       licznik ! Increment
       licznik ! Increment
       licznik ! Reset

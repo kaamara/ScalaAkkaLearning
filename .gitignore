@@ -7,6 +7,9 @@ target/
 .bloop/
 .metals/
 .scala-build/
+# Metals sam generuje ten plik w project/ na maszynie dewelopera.
+# W repo sprawialby, ze CI laduje inne pluginy niz build w Dockerze.
+metals.sbt
 
 # --- IDE ---
 .idea/

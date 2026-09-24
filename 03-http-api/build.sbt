@@ -1,8 +1,7 @@
-ThisBuild / scalaVersion := "2.13.14"
+ThisBuild / scalaVersion := "2.13.13"
 ThisBuild / organization := "pl.kaamara"
 ThisBuild / version      := "0.1.0"
 
-// Ostatnie darmowe wersje Akki. Nowsze wymagaja platnej licencji.
 val AkkaVersion     = "2.6.20"
 val AkkaHttpVersion = "10.2.10"
 

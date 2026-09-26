@@ -1,4 +1,4 @@
-# scala-docker-app
+# 04-scala-docker-app
 
 Aplikacja webowa z trzech kontenerów: backend w Scali (Cask), baza PostgreSQL
 i statyczny frontend na nginx.

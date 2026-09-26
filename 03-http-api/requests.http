@@ -1,4 +1,3 @@
-# Adresy do klikania z IntelliJ - zielona strzalka przy kazdym zapytaniu.
 # Najpierw uruchom aplikacje: docker compose up -d
 @host = http://localhost:8080
 

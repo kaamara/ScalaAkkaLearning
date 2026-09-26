@@ -17,14 +17,14 @@ operacyjnymi gotowymi pod Kubernetesa i Prometheusa.
 
 ## Uruchomienie
 
-```bash
+```
 sbt run     # serwer żyje do Ctrl+C
 sbt test    # 16 testów
 ```
 
 W kontenerze:
 
-```bash
+```
 docker compose up -d --build
 docker compose ps                      # czekaj na "(healthy)" — JVM wstaje kilka sekund
 curl -s localhost:8080/health
@@ -36,13 +36,45 @@ Endpointy można też przeklikać z pliku [`requests.http`](requests.http)
 
 ## Prometheus
 
-```bash
+Startuje tylko z profilem `observability`, nie przy zwykłym `docker compose up`:
+
+```
 docker compose --profile observability up -d
 ```
 
-Prometheus na `http://localhost:9090`, scrapuje `/metrics` co 15 sekund.
-Przykładowe zapytanie: `sum by (status) (http_requests_total)`. Bez tego
-profilu startuje sama aplikacja.
+Otwórz `http://localhost:9090`. Zapytania wpisujesz w pasek z lupką na górze
+strony — Enter, wynik pokazuje się w zakładce **Table**.
+
+| Zapytanie | Co pokazuje |
+|-----------|-------------|
+| `up` | czy Prometheus dociera do aplikacji: `1` = tak, `0` = nie |
+| `sum by (status) (http_requests_total)` | requesty wg kodu odpowiedzi |
+| `sum by (path) (http_requests_total)` | requesty wg ścieżki |
+| `sum by (status) (rate(http_requests_total[1m]))` | requesty na sekundę |
+
+Stan scrape'ów widać też bez pisania zapytań: menu **Status → Targets**.
+
+### Widzisz tylko `status="200"`?
+
+Seria czasowa powstaje dopiero wtedy, gdy dany przypadek faktycznie wystąpi.
+Wygeneruj błędy i poczekaj 15 sekund na kolejny scrape:
+
+```
+curl -s localhost:8080/nie-ma-takiego              # 404
+curl -s -X GET localhost:8080/counter/increment    # 405, bo to endpoint POST
+```
+
+### Warto zauważyć
+
+- **Liczby spóźniają się o jeden scrape** — Prometheus odczytuje licznik co
+  15 sekund, nie widzi pojedynczych zdarzeń.
+- **`_total` tylko rośnie**, dlatego prawie zawsze opakowuje się to w
+  `rate()`. Różnicę najlepiej widać na zakładce **Graph**.
+- **Nie wszystkie requesty są Twoje** — `/health` nabija healthcheck Dockera,
+  a `/metrics` sam Prometheus.
+- **`docker compose stop api`** → `up` spada do `0`, ale `http_requests_total`
+  zostaje na ostatniej wartości. Po `start` licznik rusza od zera — dlatego
+  `rate()` radzi sobie z restartami, a odejmowanie surowych wartości nie.
 
 ## Decyzje projektowe
 

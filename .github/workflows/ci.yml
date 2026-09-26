@@ -31,7 +31,7 @@ jobs:
           - 01-kalkulator
           - 02-licznik
           - 03-http-api
-          - scala-docker-app
+          - 04-scala-docker-app
     defaults:
       run:
         working-directory: ${{ matrix.project }}
@@ -66,7 +66,7 @@ jobs:
             image: scala-akka-licznik
           - project: 03-http-api
             image: scala-akka-http-api
-          - project: scala-docker-app
+          - project: 04-scala-docker-app
             image: scala-docker-app
     steps:
       - uses: actions/checkout@v4
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: scala-docker-app
+        working-directory: 04-scala-docker-app
     steps:
       - uses: actions/checkout@v4
 

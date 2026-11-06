@@ -1,0 +1,65 @@
+import akka.actor.{ActorSystem, Props}
+import akka.testkit.{ImplicitSender, TestKit}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+
+class KalkulatorSpec
+  extends TestKit(ActorSystem("test-system"))
+    with ImplicitSender
+    with AnyWordSpecLike
+    with Matchers
+    with BeforeAndAfterAll {
+
+  override def afterAll(): Unit = TestKit.shutdownActorSystem(system)
+
+  private def nowyKalkulator() = system.actorOf(Props[KalkulatorActor]())
+
+  "KalkulatorActor" should {
+
+    "odeslac sume przy Add" in {
+      nowyKalkulator() ! Add(2, 3)
+      expectMsg(Wynik(5))
+    }
+
+    "odeslac roznice przy Subtract" in {
+      nowyKalkulator() ! Subtract(2, 5)
+      expectMsg(Wynik(-3))
+    }
+
+    "odeslac iloczyn przy Multiply" in {
+      nowyKalkulator() ! Multiply(4, -3)
+      expectMsg(Wynik(-12))
+    }
+
+    "odeslac iloraz calkowity przy Divide" in {
+      nowyKalkulator() ! Divide(7, 2)
+      expectMsg(Wynik(3))
+    }
+
+    "odeslac blad przy dzieleniu przez zero" in {
+      nowyKalkulator() ! Divide(1, 0)
+      expectMsg(Blad("dzielenie przez zero"))
+    }
+
+    "liczyc dalej po bledzie" in {
+      val kalkulator = nowyKalkulator()
+      kalkulator ! Divide(1, 0)
+      kalkulator ! Add(1, 1)
+      expectMsg(Blad("dzielenie przez zero"))
+      expectMsg(Wynik(2))
+    }
+
+    "nie przekrecac wyniku poza zakresem Int" in {
+      val kalkulator = nowyKalkulator()
+      kalkulator ! Add(Int.MaxValue, 1)
+      expectMsg(Wynik(2147483648L))
+      kalkulator ! Subtract(Int.MinValue, 1)
+      expectMsg(Wynik(-2147483649L))
+      kalkulator ! Multiply(Int.MaxValue, 2)
+      expectMsg(Wynik(4294967294L))
+      kalkulator ! Divide(Int.MinValue, -1)
+      expectMsg(Wynik(2147483648L))
+    }
+  }
+}

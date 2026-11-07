@@ -23,11 +23,3 @@ Przy pushu i pull requeście do `main`:
 - `smoke` podnosi `04-scala-docker-app` i sprawdza frontend, proxy i zapis do bazy.
 
 Obrazy trafiają na Docker Hub tylko przy pushu do `main`, jeśli w repo są ustawione sekrety `DOCKERHUB_USERNAME` i `DOCKERHUB_TOKEN`.
-
-
-DevOps, od najbardziej opłacalnych:
-1. CI: paths w workflow (branch z 01 buduje tylko 01), skan obrazów Trivy i Dependabot.
-2. Kubernetes dla 03: Deployment i Service z sondami na gotowe /health i /ready, uruchamiane lokalnie na kind, potem Helm i ArgoCD.
-3. Monitoring: Grafana z gotowym dashboardem i alerty do istniejącego Prometheusa, a logi w Loki.
-4. Baza w 04: migracje Flyway zamiast CREATE TABLE przy starcie, backup, hasło jako sekret zamiast w compose.
-5. Terraform: wdrożenie na chmurę, np. Azure Container Apps z zarządzanym Postgresem.

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scala Docker App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="card">
+        <h2>Panel Sterowania</h2>
+        <label for="userInput">Wiadomość</label>
+        <input type="text" id="userInput" maxlength="500" placeholder="Wpisz wiadomość do bazy...">
+        <button onclick="sendData()">Wyślij Dane</button>
+        <div id="message"></div>
+        <div id="history"></div>
+    </div>
+    <script>
+        async function loadMessages() {
+            const res = await fetch('/api/messages');
+            document.getElementById('history').innerText = await res.text() || 'Brak wiadomości.';
+        }
+
+        async function sendData() {
+            const input = document.getElementById('userInput');
+            const res = await fetch('/api/add', { method: 'POST', body: input.value });
+            document.getElementById('message').innerText = await res.text();
+            if (res.ok) input.value = '';
+            loadMessages();
+        }
+
+        loadMessages();
+    </script>
+</body>
+</html>

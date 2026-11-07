@@ -1,0 +1,53 @@
+body {
+    font-family: system-ui, sans-serif;
+    color: #1a1a1a;
+    display: flex;
+    justify-content: center;
+    padding-top: 80px;
+    margin: 0;
+}
+
+.card {
+    width: 400px;
+    padding: 40px;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+}
+
+input {
+    width: 100%;
+    padding: 12px 0;
+    margin-bottom: 20px;
+    border: none;
+    border-bottom: 2px solid #eaeaea;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+input:focus {
+    outline: none;
+    border-bottom-color: #000;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#message {
+    margin-top: 20px;
+    color: #666;
+    text-align: center;
+}
+
+#history {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #f0f0f0;
+    white-space: pre-wrap;
+}

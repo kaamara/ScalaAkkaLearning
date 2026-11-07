@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: 01-kalkulator
+            image: kaamara/scala-akka-kalkulator
+          - project: 02-licznik
+            image: kaamara/scala-akka-licznik
+          - project: 03-http-api
+            image: kaamara/scala-akka-http-api
+          - project: 04-scala-docker-app
+            image: kaamara/scala-docker-app
+    env:
+      CAN_PUSH: ${{ github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Testy i budowa obrazu
+        run: docker build -t ${{ matrix.image }}:latest -t ${{ matrix.image }}:${{ github.sha }} ${{ matrix.project }}
+
+      - name: Push na Docker Hub
+        if: env.CAN_PUSH == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker push --all-tags ${{ matrix.image }}
+
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 04-scala-docker-app
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start aplikacji
+        run: docker compose up -d --build --wait
+
+      - name: Test aplikacji
+        run: |
+          curl -fsS --retry 5 --retry-all-errors http://localhost:8080/ | grep -q 'Panel Sterowania'
+          curl -fsS http://localhost:8080/api/ | grep -q 'Backend gotowy'
+          curl -fsS -X POST --data 'smoke-test-ci' http://localhost:8080/api/add
+          curl -fsS http://localhost:8080/api/messages | grep -q 'smoke-test-ci'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '' http://localhost:8080/api/add)" = 400
+
+      - name: Logi przy bledzie
+        if: failure()
+        run: docker compose logs

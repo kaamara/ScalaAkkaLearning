@@ -1,0 +1,52 @@
+name: CI 04-scala-docker-app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '04-scala-docker-app/**'
+      - '.github/workflows/ci-04-scala-docker-app.yml'
+      - '.github/workflows/build-project.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '04-scala-docker-app/**'
+      - '.github/workflows/ci-04-scala-docker-app.yml'
+      - '.github/workflows/build-project.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build 04-scala-docker-app
+    uses: ./.github/workflows/build-project.yml
+    with:
+      project: 04-scala-docker-app
+      image: kaamara/scala-docker-app
+    secrets: inherit
+
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 04-scala-docker-app
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start aplikacji
+        run: |
+          echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" > .env
+          docker compose up -d --build --wait
+
+      - name: Test aplikacji
+        run: |
+          curl -fsS --retry 5 --retry-all-errors http://localhost:8080/ | grep -q 'Panel Sterowania'
+          curl -fsS http://localhost:8080/api/ | grep -q 'Backend gotowy'
+          curl -fsS -X POST --data 'smoke-test-ci' http://localhost:8080/api/add
+          curl -fsS http://localhost:8080/api/messages | grep -q 'smoke-test-ci'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '' http://localhost:8080/api/add)" = 400
+
+      - name: Logi przy bledzie
+        if: failure()
+        run: docker compose logs

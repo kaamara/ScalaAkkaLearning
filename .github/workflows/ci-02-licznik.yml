@@ -1,0 +1,33 @@
+name: CI 02-licznik
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '02-licznik/**'
+      - '.github/workflows/ci-02-licznik.yml'
+      - '.github/workflows/build-project.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '02-licznik/**'
+      - '.github/workflows/ci-02-licznik.yml'
+      - '.github/workflows/build-project.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build 02-licznik
+    uses: ./.github/workflows/build-project.yml
+    with:
+      project: 02-licznik
+      image: kaamara/scala-akka-licznik
+      smoke: |
+        # Aplikacja sama wykonuje Increment/Decrement/Reset i wypisuje wynik.
+        out=$(mktemp)
+        docker run --rm "$IMAGE" > "$out"
+        grep -q 'Aktualny licznik: 2$' "$out"
+        grep -q 'Po resecie: 0$' "$out"
+    secrets: inherit

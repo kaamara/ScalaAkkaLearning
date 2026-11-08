@@ -1,4 +1,4 @@
-![CI](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci.yml/badge.svg)
+![CI 01](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci-01-kalkulator.yml/badge.svg) ![CI 02](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci-02-licznik.yml/badge.svg) ![CI 03](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci-03-http-api.yml/badge.svg) ![CI 04](https://github.com/kaamara/ScalaAkkaLearning/actions/workflows/ci-04-scala-docker-app.yml/badge.svg)
 
 # ScalaAkkaLearning
 
@@ -17,9 +17,11 @@ Testy w każdym projekcie: `sbt test`.
 
 ## CI
 
-Przy pushu i pull requeście do `main`:
+Każdy projekt ma osobny workflow, który odpala się tylko wtedy, gdy zmieni się jego folder (push i pull request do `main`):
 
-- `build` buduje obraz każdego projektu, a `Dockerfile` uruchamia przy tym testy.
-- `smoke` podnosi `04-scala-docker-app` i sprawdza frontend, proxy i zapis do bazy.
+- `ci-01-kalkulator.yml`, `ci-02-licznik.yml`, `ci-03-http-api.yml`, `ci-04-scala-docker-app.yml` wywołują `build-project.yml`, który buduje obraz, a `Dockerfile` uruchamia przy tym testy.
+- `ci-04-scala-docker-app.yml` dodatkowo ma job `smoke`, który podnosi `04-scala-docker-app` i sprawdza frontend, proxy i zapis do bazy.
 
-Obrazy trafiają na Docker Hub tylko przy pushu do `main`, jeśli w repo są ustawione sekrety `DOCKERHUB_USERNAME` i `DOCKERHUB_TOKEN`.
+Zmiana w `build-project.yml` uruchamia wszystkie cztery projekty, a zmiana w jednym `ci-*.yml` tylko ten jeden.
+
+Zbudowany obraz jest najpierw uruchamiany: `01` i `02` sprawdzane są po wyniku z konsoli, `03` odpytuje `/health`, `/counter/increment` i `/metrics`. Dopiero po udanym teście obraz może trafić na Docker Hub.

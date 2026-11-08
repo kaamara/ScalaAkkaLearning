@@ -1,0 +1,34 @@
+name: CI 01-kalkulator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '01-kalkulator/**'
+      - '.github/workflows/ci-01-kalkulator.yml'
+      - '.github/workflows/build-project.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '01-kalkulator/**'
+      - '.github/workflows/ci-01-kalkulator.yml'
+      - '.github/workflows/build-project.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build 01-kalkulator
+    uses: ./.github/workflows/build-project.yml
+    with:
+      project: 01-kalkulator
+      image: kaamara/scala-akka-kalkulator
+      smoke: |
+        # Aplikacja czyta z stdin: podajemy trzy działania i wyjście.
+        out=$(mktemp)
+        printf '10 + 5\n20 * 3\n7 / 0\nexit\n' | docker run -i --rm "$IMAGE" > "$out"
+        grep -q 'Wynik: 15$' "$out"
+        grep -q 'Wynik: 60$' "$out"
+        grep -q 'Blad: dzielenie przez zero$' "$out"
+    secrets: inherit

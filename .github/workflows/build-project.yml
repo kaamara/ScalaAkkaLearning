@@ -1,0 +1,50 @@
+name: Build projektu (wspolny)
+
+# Nie odpala sie sam - wywoluja go ci-*.yml przez "uses".
+on:
+  workflow_call:
+    inputs:
+      project:
+        description: Nazwa folderu projektu, np. 01-kalkulator
+        required: true
+        type: string
+      image:
+        description: Nazwa obrazu Docker Hub, np. kaamara/scala-akka-kalkulator
+        required: true
+        type: string
+      smoke:
+        description: Opcjonalny skrypt bash sprawdzajacy zbudowany obraz; zmienna IMAGE to obraz z tagiem SHA
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Push na Docker Hub tylko przy pushu do main i gdy są sekrety DOCKERHUB_USERNAME oraz DOCKERHUB_TOKEN.
+      CAN_PUSH: ${{ github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Testy i budowa obrazu
+        run: docker build -t ${{ inputs.image }}:latest -t ${{ inputs.image }}:${{ github.sha }} ${{ inputs.project }}
+
+      # Uruchamia zbudowany obraz. Jeśli się nie uda, krok Push nie wykona się i broken obraz nie trafi na Docker Hub.
+      - name: Smoke test obrazu
+        if: inputs.smoke != ''
+        env:
+          IMAGE: ${{ inputs.image }}:${{ github.sha }}
+        run: ${{ inputs.smoke }}
+
+      - name: Push na Docker Hub
+        if: env.CAN_PUSH == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+          docker push --all-tags ${{ inputs.image }}

@@ -14,6 +14,7 @@ services:
 
   scala-app:
     build: .
+    image: ${APP_IMAGE:-scala-docker-app:local}
     depends_on:
       db:
         condition: service_healthy

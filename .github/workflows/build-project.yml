@@ -1,6 +1,6 @@
 name: Build projektu (wspolny)
 
-# Nie odpala sie sam - wywoluja go ci-*.yml przez "uses".
+# Nie odpala sie sam - wywoluje go ci.yml przez "uses".
 on:
   workflow_call:
     inputs:
@@ -12,11 +12,11 @@ on:
         description: Nazwa obrazu Docker Hub, np. kaamara/scala-akka-kalkulator
         required: true
         type: string
-      smoke:
-        description: Opcjonalny skrypt bash sprawdzajacy zbudowany obraz; zmienna IMAGE to obraz z tagiem SHA
+    secrets:
+      DOCKERHUB_USERNAME:
         required: false
-        type: string
-        default: ''
+      DOCKERHUB_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -24,21 +24,25 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
+      PROJECT: ${{ inputs.project }}
+      IMAGE_NAME: ${{ inputs.image }}
       # Push na Docker Hub tylko przy pushu do main i gdy są sekrety DOCKERHUB_USERNAME oraz DOCKERHUB_TOKEN.
       CAN_PUSH: ${{ github.event_name == 'push' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v7
 
       - name: Testy i budowa obrazu
-        run: docker build -t ${{ inputs.image }}:latest -t ${{ inputs.image }}:${{ github.sha }} ${{ inputs.project }}
+        run: docker build -t "$IMAGE_NAME:latest" -t "$IMAGE_NAME:$GITHUB_SHA" "$PROJECT"
 
       # Uruchamia zbudowany obraz. Jeśli się nie uda, krok Push nie wykona się i broken obraz nie trafi na Docker Hub.
       - name: Smoke test obrazu
-        if: inputs.smoke != ''
+        timeout-minutes: 5
+        working-directory: ${{ inputs.project }}
         env:
           IMAGE: ${{ inputs.image }}:${{ github.sha }}
-        run: ${{ inputs.smoke }}
+        run: bash smoke.sh
 
       - name: Push na Docker Hub
         if: env.CAN_PUSH == 'true'
@@ -47,4 +51,4 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-          docker push --all-tags ${{ inputs.image }}
+          docker push --all-tags "$IMAGE_NAME"

@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Zmienione projekty
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      projects: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            01-kalkulator:
+              - '01-kalkulator/**'
+              - '.github/workflows/**'
+            02-licznik:
+              - '02-licznik/**'
+              - '.github/workflows/**'
+            03-http-api:
+              - '03-http-api/**'
+              - '.github/workflows/**'
+            04-scala-docker-app:
+              - '04-scala-docker-app/**'
+              - '.github/workflows/**'
+
+  build:
+    name: Build ${{ matrix.project }}
+    needs: changes
+    if: needs.changes.outputs.projects != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.changes.outputs.projects) }}
+    uses: ./.github/workflows/build-project.yml
+    with:
+      project: ${{ matrix.project }}
+      image: >-
+        ${{ fromJson('{
+        "01-kalkulator": "kaamara/scala-akka-kalkulator",
+        "02-licznik": "kaamara/scala-akka-licznik",
+        "03-http-api": "kaamara/scala-akka-http-api",
+        "04-scala-docker-app": "kaamara/scala-docker-app"
+        }')[matrix.project] }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  ci-ok:
+    name: ci-ok
+    needs: [changes, build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wynik calego CI
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          BUILD: ${{ needs.build.result }}
+        run: |
+          echo "changes=$CHANGES build=$BUILD"
+          test "$CHANGES" = success
+          test "$BUILD" = success || test "$BUILD" = skipped

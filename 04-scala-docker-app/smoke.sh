@@ -10,4 +10,4 @@ curl -fsS --retry 5 --retry-all-errors http://localhost:8080/ | grep -q 'Panel S
 curl -fsS http://localhost:8080/api/ | grep -q 'Backend gotowy'
 curl -fsS -X POST --data 'smoke-test-ci' http://localhost:8080/api/add
 curl -fsS http://localhost:8080/api/messages | grep -q 'smoke-test-ci'
-test "$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '' http://localhost:8080/api/add)" = 400
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '' http://localhost:8080/api/add)" == 400 ]]

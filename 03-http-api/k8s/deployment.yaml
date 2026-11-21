@@ -14,8 +14,16 @@ spec:
       labels:
         app: api
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - image: kaamara/scala-akka-http-api:dd52d90fc2465b5b9f34431f072533e50e700364
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
         name: api
         ports:
         - containerPort: 8080

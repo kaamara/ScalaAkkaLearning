@@ -15,6 +15,7 @@ spec:
         app: api
     spec:
       terminationGracePeriodSeconds: 30
+      automountServiceAccountToken: false
       containers:
       - image: kaamara/scala-akka-http-api:dd52d90fc2465b5b9f34431f072533e50e700364
         resources:
